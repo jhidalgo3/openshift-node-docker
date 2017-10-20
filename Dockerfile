@@ -2,22 +2,26 @@ FROM node:7-alpine
 
 MAINTAINER "Jose Maria Hidalgo Garcia <jhidalgo3@gmail.com>
 
-ENV OS_CLI_VERSION v1.5.1
-ENV OS_TAG 7b451fc
-ENV GLIBC_VERSION 2.25-r0
+ENV KUBE_LATEST_VERSION=v1.7.7
+ENV HELM_VERSION=v2.6.1
+ENV HELM_FILENAME=helm-${HELM_VERSION}-linux-amd64.tar.gz
 
-RUN apk add --update curl ca-certificates && \
-    curl -Lo /etc/apk/keys/sgerrand.rsa.pub https://raw.githubusercontent.com/sgerrand/alpine-pkg-glibc/master/sgerrand.rsa.pub && \
-    curl -Lo glibc.apk "https://github.com/sgerrand/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}.apk" && \
-    curl -Lo glibc-bin.apk "https://github.com/sgerrand/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/glibc-bin-${GLIBC_VERSION}.apk" && \
-    apk add glibc-bin.apk glibc.apk && \
-    /usr/glibc-compat/sbin/ldconfig /lib /usr/glibc-compat/lib && \
-    echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' >> /etc/nsswitch.conf && \
-    curl -s -L https://github.com/openshift/origin/releases/download/${OS_CLI_VERSION}/openshift-origin-client-tools-${OS_CLI_VERSION}-${OS_TAG}-linux-64bit.tar.gz -o /tmp/oc.tar.gz && \
-    tar zxvf /tmp/oc.tar.gz -C /tmp/ && \ 
-    mv /tmp/openshift-origin-client-tools-${OS_CLI_VERSION}-${OS_TAG}-linux-64bit/oc /usr/bin/ && \
-    rm -rf /tmp/oc.tar.gz /tmp/openshift-origin-client-tools-${OS_CLI_VERSION}-${OS_TAG}-linux-64bit/ && \
-    rm -rf /root/.cache /var/cache/apk/ && \
-    oc version
 
-CMD ["oc"]
+RUN apk add --update ca-certificates openssl git \
+ && apk add --update -t deps curl  \
+ && apk add --update gettext tar gzip build-base perl python \
+ && curl -L https://storage.googleapis.com/kubernetes-release/release/${KUBE_LATEST_VERSION}/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl \
+ && curl -L https://storage.googleapis.com/kubernetes-helm/${HELM_FILENAME} | tar xz && mv linux-amd64/helm /bin/helm && rm -rf linux-amd64 \
+ && chmod +x /usr/local/bin/kubectl \
+ && apk del --purge deps \
+ && rm /var/cache/apk/*
+
+
+ENV DANTE_CLI_VERSION v0.0.5
+ENV DANTE_CLI_DOWNLOAD_URL https://github.com/jhidalgo3/dante-cli/releases/download/$DANTE_CLI_VERSION/dante-cli-alpine-linux-amd64-$DANTE_CLI_VERSION.tar.gz
+
+RUN echo $DANTE_CLI_DOWNLOAD_URL
+
+RUN wget -qO- $DANTE_CLI_DOWNLOAD_URL | tar xvz -C /usr/local/bin
+
+CMD ["kubectl"]
